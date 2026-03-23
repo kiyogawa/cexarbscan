@@ -115,6 +115,8 @@ WATCHLIST = [
 BLACKLIST = [
     "USDC", "BUSD", "DAI", "TUSD", "USDP", "FDUSD",
     "USDD", "PYUSD", "EURI",
+    # 取引所間で同名別トークン（偽のアービトラージ）
+    "NEIRO",
 ]
 
 # ─────────────────────────────────────────────
