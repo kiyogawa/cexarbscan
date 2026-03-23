@@ -84,12 +84,16 @@ class ExchangeManager:
     def get_common_symbols(self, market_type: str = "both") -> list[str]:
         """
         Find symbols listed on 2+ exchanges.
+        If WATCHLIST is configured, filter it to available symbols.
         market_type: 'spot', 'futures', 'both'
         Returns normalized symbol list (e.g., 'BTC/USDT').
         """
         exchange_symbols: dict[str, set[str]] = {}
 
         for name, ex in self.exchanges.items():
+            if not ex.markets:
+                log.debug("Skipping %s (no markets loaded)", name)
+                continue
             symbols = set()
             for sym, market in ex.markets.items():
                 # Filter by USDT pairs only
@@ -124,7 +128,15 @@ class ExchangeManager:
                 all_symbols[sym] = all_symbols.get(sym, 0) + 1
 
         common = sorted([s for s, count in all_symbols.items() if count >= 2])
-        log.info("🔍 共通ペア: %d 個（2取引所以上に上場）", len(common))
+
+        # Filter by WATCHLIST if configured
+        if config.WATCHLIST:
+            common = [s for s in config.WATCHLIST if s in common]
+            log.info("🔍 ウォッチリスト: %d / %d ペアが利用可能",
+                     len(common), len(config.WATCHLIST))
+        else:
+            log.info("🔍 共通ペア: %d 個（2取引所以上に上場）", len(common))
+
         return common
 
     def fetch_all_prices(self, symbol: str) -> dict[str, dict]:
@@ -136,6 +148,8 @@ class ExchangeManager:
         base = symbol.split("/")[0]
 
         for name, ex in self.exchanges.items():
+            if not ex.markets:
+                continue
             # Try spot
             spot_sym = f"{base}/USDT"
             swap_sym = f"{base}/USDT:USDT"

@@ -90,8 +90,26 @@ TAKER_FEES = {
 # Watch / Blacklist
 # ─────────────────────────────────────────────
 
-# 監視対象ペア（空ならUSDT建て全ペアを自動検出）
-WATCHLIST = []
+# 監視対象ペア — ミームコイン＆新規上場特化（価格差が出やすい）
+WATCHLIST = [
+    # ── ミームコイン（流動性低め＝価格差大） ──
+    "PEPE/USDT", "WIF/USDT", "BONK/USDT", "FLOKI/USDT", "SHIB/USDT",
+    "DOGE/USDT", "MEME/USDT", "TURBO/USDT", "BRETT/USDT", "MOG/USDT",
+    "POPCAT/USDT", "NEIRO/USDT", "MYRO/USDT", "BOME/USDT", "MEW/USDT",
+    "PEOPLE/USDT", "BABYDOGE/USDT", "SATS/USDT", "RATS/USDT", "CAT/USDT",
+    "ACT/USDT", "PNUT/USDT", "GOAT/USDT", "FARTCOIN/USDT", "SPX/USDT",
+    "TRUMP/USDT", "PENGU/USDT", "AI16Z/USDT", "VIRTUAL/USDT",
+    # ── 新興・小型（価格差出やすい） ──
+    "SEI/USDT", "TIA/USDT", "JUP/USDT", "PYTH/USDT", "STRK/USDT",
+    "W/USDT", "DYM/USDT", "MANTA/USDT", "ALT/USDT", "PIXEL/USDT",
+    "PORTAL/USDT", "AEVO/USDT", "ETHFI/USDT", "ENA/USDT", "ONDO/USDT",
+    "SAGA/USDT", "OMNI/USDT", "REZ/USDT", "BB/USDT", "ZRO/USDT",
+    # ── AI関連（ボラ高い） ──
+    "FET/USDT", "RENDER/USDT", "WLD/USDT", "ARKM/USDT", "TAO/USDT",
+    "AKT/USDT", "IO/USDT", "TNSR/USDT",
+    # ── ゲーム・NFT（板薄い） ──
+    "GALA/USDT", "IMX/USDT", "BLUR/USDT", "JASMY/USDT", "CHZ/USDT",
+]
 
 # 除外ペア（ステーブルコイン等）
 BLACKLIST = [
