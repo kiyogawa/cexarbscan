@@ -1,0 +1,4 @@
+ccxt>=4.0
+python-dotenv
+python-telegram-bot>=20.0
+rich
