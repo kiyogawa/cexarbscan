@@ -101,9 +101,15 @@ def cmd_scan():
             best = opps[0]
             executor.execute(best)
 
+        # Check open positions for auto-close
+        executor.positions.check_and_close()
+
         # Show stats periodically
         if scanner.stats["scans"] % 12 == 0:
             dashboard.print_scan_stats(scanner.stats, executor.get_stats())
+            open_cnt = executor.positions.get_open_count()
+            if open_cnt > 0:
+                log.info(executor.positions.get_summary())
 
     scanner.run_loop(callback=on_opportunities)
 

@@ -14,6 +14,7 @@ from datetime import datetime
 import config
 from exchanges.manager import ExchangeManager
 from calculator import Opportunity
+from position_manager import PositionManager
 import notifier
 
 log = logging.getLogger("arb.executor")
@@ -26,6 +27,7 @@ class Executor:
 
     def __init__(self, manager: ExchangeManager):
         self.manager = manager
+        self.positions = PositionManager(manager)
         self.trade_count = 0
         self.total_profit = 0.0
         self.history: list[dict] = []
@@ -178,6 +180,10 @@ class Executor:
         )
 
         notifier.notify_trade_result(opp, buy_result, sell_result)
+
+        # Track position for auto-close
+        self.positions.add_position(opp, buy_result, sell_result)
+
         self._record(
             opp, True,
             buy_result.get("id"), sell_result.get("id"), amount,
