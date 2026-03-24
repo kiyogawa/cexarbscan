@@ -1,6 +1,6 @@
 """
 CEX Arbitrage Bot — Configuration
-6取引所対応（MEXC, Bitget, LBank, KuCoin, BingX, Gate.io）
+7取引所対応（MEXC, Bitget, LBank, KuCoin, BingX, Gate.io, CoinW）
 """
 
 import os
@@ -38,6 +38,10 @@ EXCHANGES = {
     "gateio": {
         "apiKey": os.getenv("GATEIO_API_KEY", ""),
         "secret": os.getenv("GATEIO_API_SECRET", ""),
+    },
+    "coinw": {
+        "apiKey": os.getenv("COINW_API_KEY", ""),
+        "secret": os.getenv("COINW_API_SECRET", ""),
     },
 }
 
@@ -84,6 +88,7 @@ TAKER_FEES = {
     "kucoin": 0.001,      # 0.10%
     "bingx": 0.001,       # 0.10%
     "gateio": 0.002,      # 0.20%
+    "coinw": 0.001,       # 0.10%
 }
 
 # ─────────────────────────────────────────────
