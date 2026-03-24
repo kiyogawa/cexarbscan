@@ -1,6 +1,6 @@
 """
-Exchange Manager — 6取引所のCCXTインスタンスを統一管理
-MEXC, Bitget, LBank, KuCoin, BingX, Gate.io
+Exchange Manager — 7取引所のインスタンスを統一管理
+MEXC, Bitget, LBank, KuCoin, BingX, Gate.io, CoinW
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from typing import Optional
 import ccxt
 
 import config
+from exchanges.coinw_adapter import CoinWExchange
 
 log = logging.getLogger("arb.exchanges")
 
@@ -23,7 +24,6 @@ EXCHANGE_CLASSES = {
     "kucoin": ccxt.kucoin,
     "bingx": ccxt.bingx,
     "gateio": ccxt.gateio,
-    # "coinw": not supported by CCXT — needs custom integration
 }
 
 
@@ -39,6 +39,13 @@ class ExchangeManager:
         for name, creds in config.EXCHANGES.items():
             if not creds.get("apiKey"):
                 log.warning("⚠️  %s: APIキー未設定（読み取り専用モード）", name.upper())
+
+            # CoinW uses custom adapter
+            if name == "coinw":
+                ex = CoinWExchange(creds)
+                self.exchanges[name] = ex
+                log.info("✅ COINW: 接続準備完了（カスタムアダプター）")
+                continue
 
             cls = EXCHANGE_CLASSES.get(name)
             if cls is None:
