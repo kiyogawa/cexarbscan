@@ -30,7 +30,7 @@ class Scanner:
         }
         # Cooldown: don't re-alert same opportunity within N seconds
         self._alerted: dict[str, float] = {}
-        self._alert_cooldown = 60  # seconds
+        self._alert_cooldown = 300  # 5 minutes
 
     def init(self):
         """Load markets and find common symbols."""
@@ -71,8 +71,8 @@ class Scanner:
         return all_opportunities
 
     def should_alert(self, opp: Opportunity) -> bool:
-        """Check if we should send an alert (cooldown logic)."""
-        key = f"{opp.symbol}_{opp.buy_exchange}_{opp.sell_exchange}"
+        """Check if we should send an alert (cooldown per symbol)."""
+        key = opp.symbol  # 同じペアは5分間再通知しない
         now = time.time()
         last = self._alerted.get(key, 0)
         if now - last < self._alert_cooldown:
