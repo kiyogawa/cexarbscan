@@ -1,6 +1,6 @@
 """
 CEX Arbitrage Bot — Configuration
-7取引所対応（MEXC, Bitget, LBank, KuCoin, BingX, Gate.io, CoinW）
+5取引所対応（MEXC, Bitget, KuCoin, BingX, Gate.io）
 """
 
 import os
@@ -22,10 +22,10 @@ EXCHANGES = {
         "secret": os.getenv("BITGET_API_SECRET", ""),
         "password": os.getenv("BITGET_PASSPHRASE", ""),
     },
-    "lbank": {
-        "apiKey": os.getenv("LBANK_API_KEY", ""),
-        "secret": os.getenv("LBANK_API_SECRET", ""),
-    },
+    # "lbank": {  # 先物非対応—一時除外
+    #     "apiKey": os.getenv("LBANK_API_KEY", ""),
+    #     "secret": os.getenv("LBANK_API_SECRET", ""),
+    # },
     "kucoin": {
         "apiKey": os.getenv("KUCOIN_API_KEY", ""),
         "secret": os.getenv("KUCOIN_API_SECRET", ""),
@@ -39,10 +39,10 @@ EXCHANGES = {
         "apiKey": os.getenv("GATEIO_API_KEY", ""),
         "secret": os.getenv("GATEIO_API_SECRET", ""),
     },
-    "coinw": {
-        "apiKey": os.getenv("COINW_API_KEY", ""),
-        "secret": os.getenv("COINW_API_SECRET", ""),
-    },
+    # "coinw": {  # CCXT非対応・先物非対応—一時除外
+    #     "apiKey": os.getenv("COINW_API_KEY", ""),
+    #     "secret": os.getenv("COINW_API_SECRET", ""),
+    # },
 }
 
 # ─────────────────────────────────────────────
@@ -84,11 +84,11 @@ MARKET_TYPE = "both"
 TAKER_FEES = {
     "mexc": 0.0005,       # 0.05%
     "bitget": 0.001,      # 0.10%
-    "lbank": 0.001,       # 0.10%
+    # "lbank": 0.001,     # 0.10% — 除外中
     "kucoin": 0.001,      # 0.10%
     "bingx": 0.001,       # 0.10%
     "gateio": 0.002,      # 0.20%
-    "coinw": 0.001,       # 0.10%
+    # "coinw": 0.001,     # 0.10% — 除外中
 }
 
 # ─────────────────────────────────────────────
