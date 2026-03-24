@@ -105,44 +105,87 @@ class Executor:
         return False  # Not auto-executed
 
     def _auto_execute(self, opp: Opportunity) -> bool:
-        """Execute both sides of the arbitrage simultaneously."""
+        """Execute arbitrage — only same-exchange spot↔futures trades."""
+
+        # ── Safety: only execute same-exchange trades ──
+        if opp.buy_exchange != opp.sell_exchange:
+            log.info(
+                "⏭️  [SKIP] %s: cross-exchange (%s→%s) — dry_run only",
+                opp.symbol, opp.buy_exchange.upper(), opp.sell_exchange.upper(),
+            )
+            return self._dry_run(opp)
+
+        # ── Safety: only spot-buy + futures-sell pattern ──
+        # (spot buy = USDT, futures short = USDT margin — both doable)
+        if not (opp.buy_market_type == "spot" and opp.sell_market_type == "futures"):
+            log.info(
+                "⏭️  [SKIP] %s: unsupported pattern (%s→%s)",
+                opp.symbol, opp.buy_market_type, opp.sell_market_type,
+            )
+            return self._dry_run(opp)
+
         log.info(
-            "⚡ [AUTO] 実行開始: %s BUY %s → SELL %s",
-            opp.symbol, opp.buy_exchange.upper(), opp.sell_exchange.upper(),
+            "⚡ [AUTO] 同一取引所アビ: %s on %s | spot BUY + futures SHORT",
+            opp.symbol, opp.buy_exchange.upper(),
         )
 
         amount = opp.trade_amount_usdt
 
-        # Execute both orders
+        # Step 1: Buy spot
         buy_result = self.manager.place_market_buy(
             opp.buy_exchange, opp.buy_symbol, amount
         )
-        sell_result = self.manager.place_market_sell(
+
+        if buy_result is None:
+            log.error("❌ Spot BUY失敗 — 取引中止: %s", opp.symbol)
+            notifier.notify_trade_result(opp, {}, {})
+            self._record(opp, False, None, None, amount)
+            return False
+
+        # Step 2: Short futures
+        sell_result = self.manager.place_futures_short(
             opp.sell_exchange, opp.sell_symbol, amount
         )
 
-        success = buy_result is not None and sell_result is not None
-
-        if success:
-            self.trade_count += 1
-            self.total_profit += opp.net_profit_usdt
-            log.info(
-                "✅ 取引成功: %s | 推定利益: $%.2f | 累計: $%.2f",
-                opp.symbol, opp.net_profit_usdt, self.total_profit,
+        if sell_result is None:
+            # Rollback: sell the spot buy back
+            log.error("❌ Futures SHORT失敗 — Spot BUYをロールバック中...")
+            rollback = self.manager.place_market_sell(
+                opp.buy_exchange, opp.buy_symbol, amount
             )
-        else:
-            log.error("❌ 取引失敗: %s", opp.symbol)
+            if rollback:
+                log.info("🔄 ロールバック成功: %s spot売却完了", opp.symbol)
+            else:
+                log.error("🚨 ロールバック失敗! %s がspot口座に残ってます!", opp.symbol)
+            notifier.notify_trade_result(opp, buy_result, {})
+            self._record(opp, False, buy_result.get("id"), None, amount)
+            return False
 
-        # Notify
-        notifier.notify_trade_result(opp, buy_result or {}, sell_result or {})
+        # Success!
+        self.trade_count += 1
+        self.total_profit += opp.net_profit_usdt
+        log.info(
+            "✅ 取引成功: %s | 推定利益: $%.2f | 累計: $%.2f",
+            opp.symbol, opp.net_profit_usdt, self.total_profit,
+        )
 
-        # Record
+        notifier.notify_trade_result(opp, buy_result, sell_result)
+        self._record(
+            opp, True,
+            buy_result.get("id"), sell_result.get("id"), amount,
+        )
+        return True
+
+    def _record(self, opp, success, buy_id, sell_id, amount):
+        """Record trade to history."""
         record = {
             "time": datetime.now().isoformat(),
             "mode": "auto",
             "symbol": opp.symbol,
             "buy_exchange": opp.buy_exchange,
             "sell_exchange": opp.sell_exchange,
+            "buy_market_type": opp.buy_market_type,
+            "sell_market_type": opp.sell_market_type,
             "buy_price": opp.buy_price,
             "sell_price": opp.sell_price,
             "spread_pct": opp.spread_pct,
@@ -150,13 +193,11 @@ class Executor:
             "net_profit_usdt": opp.net_profit_usdt,
             "trade_amount_usdt": amount,
             "success": success,
-            "buy_order_id": buy_result.get("id") if buy_result else None,
-            "sell_order_id": sell_result.get("id") if sell_result else None,
+            "buy_order_id": buy_id,
+            "sell_order_id": sell_id,
         }
         self.history.append(record)
         self._save_history()
-
-        return success
 
     def get_stats(self) -> dict:
         """Get executor statistics."""

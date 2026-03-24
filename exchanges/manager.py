@@ -296,6 +296,41 @@ class ExchangeManager:
             log.error("❌ SELL失敗 %s on %s: %s", symbol, exchange.upper(), e)
             return None
 
+    def place_futures_short(self, exchange: str, symbol: str,
+                            amount_usdt: float) -> Optional[dict]:
+        """Open a futures SHORT position (sell side of spot-futures arb)."""
+        ex = self.exchanges.get(exchange)
+        if not ex:
+            return None
+
+        if config.TRADE_MODE == "dry_run":
+            log.info("[DRY RUN] SHORT %s on %s — $%.2f",
+                     symbol, exchange.upper(), amount_usdt)
+            return {"id": "dry_run", "status": "simulated", "side": "sell",
+                    "amount_usdt": amount_usdt}
+
+        try:
+            ticker = ex.fetch_ticker(symbol)
+            price = float(ticker["bid"])
+            amount = amount_usdt / price
+
+            amount = float(ex.amount_to_precision(symbol, amount))
+
+            # Open short position on futures
+            order = ex.create_order(
+                symbol=symbol,
+                type="market",
+                side="sell",
+                amount=amount,
+                params={"reduceOnly": False},
+            )
+            log.info("✅ SHORT %s on %s — qty=%.6g id=%s",
+                     symbol, exchange.upper(), amount, order.get("id"))
+            return order
+        except Exception as e:
+            log.error("❌ SHORT失敗 %s on %s: %s", symbol, exchange.upper(), e)
+            return None
+
     def test_connections(self) -> dict[str, bool]:
         """Test connectivity to all exchanges."""
         results = {}
