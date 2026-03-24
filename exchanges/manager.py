@@ -23,7 +23,7 @@ EXCHANGE_CLASSES = {
     "kucoin": ccxt.kucoin,
     "bingx": ccxt.bingx,
     "gateio": ccxt.gateio,
-    "coinw": ccxt.coinw,
+    # "coinw": not supported by CCXT — needs custom integration
 }
 
 
