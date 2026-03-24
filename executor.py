@@ -105,58 +105,66 @@ class Executor:
         return False  # Not auto-executed
 
     def _auto_execute(self, opp: Opportunity) -> bool:
-        """Execute arbitrage — only same-exchange spot↔futures trades."""
+        """Execute arbitrage — allow any trade where SELL side is futures."""
 
-        # ── Safety: only execute same-exchange trades ──
-        if opp.buy_exchange != opp.sell_exchange:
+        # ── SELL side must be futures (SHORT = USDT margin only) ──
+        # SELL spot requires holding the coin → block
+        if opp.sell_market_type != "futures":
             log.info(
-                "⏭️  [SKIP] %s: cross-exchange (%s→%s) — dry_run only",
-                opp.symbol, opp.buy_exchange.upper(), opp.sell_exchange.upper(),
-            )
-            return self._dry_run(opp)
-
-        # ── Safety: only spot-buy + futures-sell pattern ──
-        # (spot buy = USDT, futures short = USDT margin — both doable)
-        if not (opp.buy_market_type == "spot" and opp.sell_market_type == "futures"):
-            log.info(
-                "⏭️  [SKIP] %s: unsupported pattern (%s→%s)",
-                opp.symbol, opp.buy_market_type, opp.sell_market_type,
+                "⏭️  [SKIP] %s: SELL is spot (%s→%s %s) — need coin",
+                opp.symbol,
+                opp.buy_exchange.upper(), opp.sell_exchange.upper(),
+                opp.sell_market_type,
             )
             return self._dry_run(opp)
 
         log.info(
-            "⚡ [AUTO] 同一取引所アビ: %s on %s | spot BUY + futures SHORT",
-            opp.symbol, opp.buy_exchange.upper(),
+            "⚡ [AUTO] %s: BUY %s(%s) → SHORT %s(%s)",
+            opp.symbol,
+            opp.buy_exchange.upper(), opp.buy_market_type,
+            opp.sell_exchange.upper(), opp.sell_market_type,
         )
 
         amount = opp.trade_amount_usdt
 
-        # Step 1: Buy spot
-        buy_result = self.manager.place_market_buy(
-            opp.buy_exchange, opp.buy_symbol, amount
-        )
+        # Step 1: BUY side (spot or futures long)
+        if opp.buy_market_type == "spot":
+            buy_result = self.manager.place_market_buy(
+                opp.buy_exchange, opp.buy_symbol, amount
+            )
+        else:
+            # futures long
+            buy_result = self.manager.place_futures_long(
+                opp.buy_exchange, opp.buy_symbol, amount
+            )
 
         if buy_result is None:
-            log.error("❌ Spot BUY失敗 — 取引中止: %s", opp.symbol)
+            log.error("❌ BUY失敗 — 取引中止: %s", opp.symbol)
             notifier.notify_trade_result(opp, {}, {})
             self._record(opp, False, None, None, amount)
             return False
 
-        # Step 2: Short futures
+        # Step 2: SHORT futures (SELL side)
         sell_result = self.manager.place_futures_short(
             opp.sell_exchange, opp.sell_symbol, amount
         )
 
         if sell_result is None:
-            # Rollback: sell the spot buy back
-            log.error("❌ Futures SHORT失敗 — Spot BUYをロールバック中...")
-            rollback = self.manager.place_market_sell(
-                opp.buy_exchange, opp.buy_symbol, amount
-            )
-            if rollback:
-                log.info("🔄 ロールバック成功: %s spot売却完了", opp.symbol)
+            # Rollback: reverse the buy
+            log.error("❌ SHORT失敗 — BUYをロールバック中...")
+            if opp.buy_market_type == "spot":
+                rollback = self.manager.place_market_sell(
+                    opp.buy_exchange, opp.buy_symbol, amount
+                )
             else:
-                log.error("🚨 ロールバック失敗! %s がspot口座に残ってます!", opp.symbol)
+                # Close the futures long
+                rollback = self.manager.place_futures_short(
+                    opp.buy_exchange, opp.buy_symbol, amount
+                )
+            if rollback:
+                log.info("🔄 ロールバック成功: %s", opp.symbol)
+            else:
+                log.error("🚨 ロールバック失敗! %s のポジションが残ってます!", opp.symbol)
             notifier.notify_trade_result(opp, buy_result, {})
             self._record(opp, False, buy_result.get("id"), None, amount)
             return False
