@@ -95,7 +95,21 @@ class Scanner:
                 opps = self.scan_once()
 
                 if opps:
-                    for opp in opps[:5]:  # Top 5 only
+                    # Group by symbol → only keep the best per pair
+                    best_per_symbol: dict[str, Opportunity] = {}
+                    for opp in opps:
+                        existing = best_per_symbol.get(opp.symbol)
+                        if existing is None or opp.net_profit_pct > existing.net_profit_pct:
+                            best_per_symbol[opp.symbol] = opp
+
+                    # Sort best-per-symbol by profit
+                    top_opps = sorted(
+                        best_per_symbol.values(),
+                        key=lambda x: x.net_profit_pct,
+                        reverse=True,
+                    )
+
+                    for opp in top_opps[:5]:  # Top 5 unique pairs only
                         log.info(opp.summary())
 
                         if self.should_alert(opp):
