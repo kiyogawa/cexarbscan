@@ -108,6 +108,43 @@ def cmd_scan():
     scanner.run_loop(callback=on_opportunities)
 
 
+def cmd_transfer():
+    """Transfer 50% of spot USDT to futures account on each exchange."""
+    dashboard.print_banner()
+    log.info("🔄 現物→先物 USDT振替開始...")
+
+    # Exchanges that support futures
+    FUTURES_EXCHANGES = ["mexc", "bitget", "bingx", "gateio", "kucoin"]
+
+    mgr = ExchangeManager()
+    mgr.load_all_markets()
+
+    for name in FUTURES_EXCHANGES:
+        ex = mgr.exchanges.get(name)
+        if not ex:
+            continue
+        try:
+            bal = ex.fetch_balance()
+            usdt_free = float(bal.get("USDT", {}).get("free", 0))
+            transfer_amount = round(usdt_free * 0.5, 2)
+
+            if transfer_amount < 5:
+                log.info("⏭️  %s: USDT残高少ない($%.2f) — スキップ",
+                         name.upper(), usdt_free)
+                continue
+
+            log.info("🔄 %s: $%.2f → 先物口座へ振替中...", name.upper(), transfer_amount)
+            ex.transfer("USDT", transfer_amount, "spot", "swap")
+            log.info("✅ %s: $%.2f 振替完了！", name.upper(), transfer_amount)
+
+        except Exception as e:
+            log.error("❌ %s: 振替失敗 — %s", name.upper(), e)
+
+    log.info("💰 振替後の残高を確認中...")
+    balances = mgr.get_all_balances()
+    dashboard.print_balances(balances)
+
+
 def cmd_auto():
     """Run in auto-execute mode."""
     config.TRADE_MODE = "auto"
@@ -156,6 +193,7 @@ COMMANDS = {
     "balance": cmd_balance,
     "scan": cmd_scan,
     "auto": cmd_auto,
+    "transfer": cmd_transfer,
     "help": cmd_help,
 }
 
