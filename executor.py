@@ -109,6 +109,11 @@ class Executor:
     def _auto_execute(self, opp: Opportunity) -> bool:
         """Execute arbitrage — allow any trade where SELL side is futures."""
 
+        # ── Gate.io はシグナル通知のみ（自動実行しない） ──
+        if opp.buy_exchange == "gateio" or opp.sell_exchange == "gateio":
+            log.info("🚧 [SIGNAL ONLY] Gate.io絡みのため自動実行をスキップし、通知のみ行います: %s", opp.symbol)
+            return self._manual(opp)
+
         # ── SELL side must be futures (SHORT = USDT margin only) ──
         # SELL spot requires holding the coin → block
         if opp.sell_market_type != "futures":
