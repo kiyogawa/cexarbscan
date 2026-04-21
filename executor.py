@@ -109,10 +109,7 @@ class Executor:
     def _auto_execute(self, opp: Opportunity) -> bool:
         """Execute arbitrage — allow any trade where SELL side is futures."""
 
-        # ── Gate.io は dry_run（通知もせず、履歴とログにのみ記録） ──
-        if opp.buy_exchange == "gateio" or opp.sell_exchange == "gateio":
-            log.info("🚧 [DRY RUN] Gate.io絡みのため自動実行をスキップし、dry_run を実行します: %s", opp.symbol)
-            return self._dry_run(opp)
+
 
         # ── SELL side must be futures (SHORT = USDT margin only) ──
         # SELL spot requires holding the coin → block
